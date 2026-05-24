@@ -22,12 +22,12 @@ async function handleCommand(text, io) {
         emitReply(io, result.reply);
 
         // Execute the action if there is one
-        if (result.action && result.action !== 'null') {
+        if (result.action && result.action !== 'null' && result.action !== null) {
+          emitLog(io, `[Action] ${result.action}`);
           executeAction(result.action, io);
         }
         return;
       }
-      // If interpret returned null, Ollama might not be running
       emitLog(io, 'AI did not respond — is Ollama running? Falling back to direct command.');
     } catch (err) {
       emitLog(io, `AI error: ${err.message} — falling back to direct command.`);
@@ -38,12 +38,30 @@ async function handleCommand(text, io) {
   executeAction(text, io);
 }
 
+// Normalize AI action strings into the format our switch expects
+// The AI might return "Follow Steve", "go to 100 64 200", "say hello everyone!", etc.
+function normalizeAction(text) {
+  let s = text.trim();
+
+  // "go to X Y Z" → "goto X Y Z"
+  s = s.replace(/^go\s+to\s+/i, 'goto ');
+
+  // "look around" → "look"
+  s = s.replace(/^look\s+around/i, 'look');
+
+  // "stop moving" / "stop walking" → "stop"
+  s = s.replace(/^stop\s+\w+/i, 'stop');
+
+  return s;
+}
+
 // Execute a parsed command string like "goto 100 64 200" or "follow Steve"
 function executeAction(text, io) {
   const bot = getBot();
   if (!bot || !bot.entity) return;
 
-  const parts = text.trim().split(/\s+/);
+  const normalized = normalizeAction(text);
+  const parts = normalized.split(/\s+/);
   const cmd = parts[0]?.toLowerCase();
   const args = parts.slice(1);
 
@@ -62,12 +80,14 @@ function executeAction(text, io) {
       case 'jump': {
         bot.setControlState('jump', true);
         setTimeout(() => bot.setControlState('jump', false), 500);
+        emitLog(io, 'Jumped!');
         break;
       }
 
       case 'goto': {
-        const [x, y, z] = args.map(Number);
-        if ([x, y, z].some(isNaN)) return emitLog(io, "I need coordinates — like 'go to 100 64 200'.");
+        const nums = normalized.match(/-?\d+\.?\d*/g);
+        if (!nums || nums.length < 3) return emitLog(io, "I need 3 coordinates — like 'go to 100 64 200'.");
+        const [x, y, z] = nums.map(Number);
         emitLog(io, `Navigating to ${x}, ${y}, ${z}…`);
         bot.pathfinder.setGoal(new goals.GoalBlock(x, y, z));
         break;
@@ -78,13 +98,24 @@ function executeAction(text, io) {
         if (!targetName) return emitLog(io, "Follow who? Give me a player name.");
         const target = bot.players[targetName]?.entity;
         if (!target) return emitLog(io, `Can't find "${targetName}" nearby.`);
+        emitLog(io, `Following ${targetName}…`);
         bot.pathfinder.setGoal(new goals.GoalFollow(target, 2), true);
+        break;
+      }
+
+      case 'come': {
+        // "come here" / "come to me" — follow the nearest player
+        const nearestPlayer = bot.nearestEntity((e) => e.type === 'player');
+        if (!nearestPlayer) return emitLog(io, "Can't see any players nearby.");
+        emitLog(io, `Coming to you…`);
+        bot.pathfinder.setGoal(new goals.GoalFollow(nearestPlayer, 2), true);
         break;
       }
 
       case 'stop': {
         bot.pathfinder.setGoal(null);
         bot.clearControlStates();
+        emitLog(io, 'Stopped.');
         break;
       }
 
@@ -93,6 +124,7 @@ function executeAction(text, io) {
         const yaw = (Math.random() * Math.PI * 2) - Math.PI;
         const pitch = (Math.random() * 0.6) - 0.3;
         bot.look(yaw, pitch);
+        emitLog(io, 'Looking around…');
         break;
       }
 
@@ -139,7 +171,7 @@ function executeAction(text, io) {
       }
 
       default:
-        emitLog(io, `Not sure what "${cmd}" means.`);
+        emitLog(io, `Unknown action: "${cmd}" — skipping.`);
     }
   } catch (err) {
     emitLog(io, `Error: ${err.message}`);
