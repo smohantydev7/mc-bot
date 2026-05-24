@@ -1,4 +1,5 @@
-const { getBotState } = require('./bot');
+// NOTE: Do NOT import bot.js here — it creates a circular dependency.
+// botState is passed as a parameter to interpret() instead.
 const { getSkillsPrompt } = require('./skills');
 
 let provider = null; // 'ollama' or 'anthropic'
@@ -171,11 +172,10 @@ async function interpretWithAnthropic(userMessage, stateContext) {
   return JSON.parse(response.content[0].text.trim());
 }
 
-async function interpret(userMessage) {
+async function interpret(userMessage, botState) {
   if (!provider) return null;
 
-  const botState = getBotState();
-  const stateContext = botState.online
+  const stateContext = botState?.online
     ? `\n\nMy current state: HP ${botState.health}/20, Food ${botState.food}/20, Position: ${botState.position.x}, ${botState.position.y}, ${botState.position.z}, Dimension: ${botState.dimension}`
     : '\n\nI am currently not connected to any Minecraft server.';
 

@@ -198,7 +198,7 @@ async function handleInGameChat(username, message, io) {
   if (!isEnabled() || !bot) return;
 
   try {
-    const result = await interpret(`${username} says: ${message}`);
+    const result = await interpret(`${username} says: ${message}`, getBotState());
     if (result && result.reply) {
       bot.chat(result.reply);
       emitLog(io, `[Bot replied] ${result.reply}`);

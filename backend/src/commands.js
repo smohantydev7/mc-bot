@@ -17,7 +17,7 @@ async function handleCommand(text, io) {
   if (isEnabled()) {
     emitLog(io, 'Thinking...');
     try {
-      const result = await interpret(text);
+      const result = await interpret(text, getBotState());
       if (result) {
         // Show the friendly reply
         emitReply(io, result.reply);
