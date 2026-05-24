@@ -2,6 +2,7 @@ const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const { startAutonomous, stopAutonomous } = require('./autonomous');
 const { isEnabled, interpret } = require('./ai');
+const { loadSkills } = require('./skills');
 
 let bot = null;
 let reconnectTimer = null;
@@ -61,6 +62,9 @@ function createBot(overrides = {}, io) {
     const defaultMove = new Movements(bot, mcData);
     defaultMove.allowSprinting = true;
     bot.pathfinder.setMovements(defaultMove);
+
+    // Load skills system
+    loadSkills(mcData);
 
     // Start broadcasting state to the console
     startStateUpdates(io);

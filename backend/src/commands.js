@@ -2,6 +2,7 @@ const { goals } = require('mineflayer-pathfinder');
 const { getBot, getBotState } = require('./bot');
 const { toggleAutonomous, isAutonomousRunning } = require('./autonomous');
 const { isEnabled, interpret } = require('./ai');
+const { hasSkill, executeSkill, cancelCurrentSkill } = require('./skills');
 
 // Main entry point — routes through AI if enabled, otherwise uses direct commands
 async function handleCommand(text, io) {
@@ -113,6 +114,7 @@ function executeAction(text, io) {
       }
 
       case 'stop': {
+        cancelCurrentSkill(bot);
         bot.pathfinder.setGoal(null);
         bot.clearControlStates();
         emitLog(io, 'Stopped.');
@@ -171,6 +173,14 @@ function executeAction(text, io) {
       }
 
       default:
+        // Check if it's a registered skill
+        if (hasSkill(cmd)) {
+          cancelCurrentSkill(bot);
+          executeSkill(cmd, bot, args, io)
+            .then(() => emitLog(io, `Skill "${cmd}" completed.`))
+            .catch((err) => emitLog(io, `Skill "${cmd}" failed: ${err.message}`));
+          return;
+        }
         emitLog(io, `Unknown action: "${cmd}" — skipping.`);
     }
   } catch (err) {

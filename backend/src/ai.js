@@ -1,4 +1,5 @@
 const { getBotState } = require('./bot');
+const { getSkillsPrompt } = require('./skills');
 
 let provider = null; // 'ollama' or 'anthropic'
 let anthropicClient = null;
@@ -35,7 +36,10 @@ function isEnabled() {
   return provider !== null;
 }
 
-const SYSTEM_PROMPT = `You are a friendly Minecraft bot named AIWorker. A human is controlling you through a remote console. You're actually inside the Minecraft world right now — you can see, move, fight, and explore.
+function buildSystemPrompt() {
+  const skillsSection = getSkillsPrompt();
+
+  return `You are a friendly Minecraft bot named AIWorker. A human is controlling you through a remote console. You're actually inside the Minecraft world right now — you can see, move, fight, and explore.
 
 Talk like a chill friend — casual, short replies, no formal language. Use humor when it fits. You're a buddy hanging out in Minecraft together.
 
@@ -44,13 +48,15 @@ You can perform these actions by returning them in your JSON response:
 - jump — jump once
 - goto <x> <y> <z> — walk to specific coordinates
 - follow <player> — follow a player around
-- stop — stop all movement
+- stop — stop all movement/skills
 - look — look around randomly
 - attack — attack the nearest mob
 - status — check your own health/food/position
 - players — see who's online
 - inventory — check what items you have
 - auto — toggle autonomous wandering mode
+
+${skillsSection}
 
 IMPORTANT: You MUST respond with valid JSON only. No markdown, no code blocks, just raw JSON.
 
@@ -77,6 +83,45 @@ User: "stop right there"
 User: "what do you have on you"
 {"action": "inventory", "reply": "Lemme check my pockets..."}
 
+User: "go get me some wood"
+{"action": "gather wood", "reply": "On it! Heading out to chop some trees."}
+
+User: "I'm hungry, get some food"
+{"action": "hunt cow", "reply": "Let me find some cows and get us some food!"}
+
+User: "make me a wooden pickaxe"
+{"action": "craft wooden_pickaxe", "reply": "Let me check if I have the materials..."}
+
+User: "mine some iron"
+{"action": "gather iron", "reply": "Time to go mining! Let me find some iron ore."}
+
+User: "keep yourself alive"
+{"action": "survive", "reply": "Survival mode on! I'll eat, fight, and shelter myself."}
+
+User: "chop down some trees"
+{"action": "gather wood", "reply": "Lumberjack mode activated! Let me find some trees."}
+
+User: "kill that cow"
+{"action": "hunt cow", "reply": "Going after that cow!"}
+
+User: "eat something"
+{"action": "eat", "reply": "Let me grab something from my inventory..."}
+
+User: "build a pillar"
+{"action": "build pillar 4", "reply": "Building up! Let me stack some blocks."}
+
+User: "put your best armor on"
+{"action": "equip armor", "reply": "Suiting up with the best gear I've got!"}
+
+User: "harvest the crops"
+{"action": "farm harvest", "reply": "Harvest time! Let me gather those crops."}
+
+User: "go fishing"
+{"action": "fish 5", "reply": "Let me grab my rod and find some water!"}
+
+User: "store everything in the chest"
+{"action": "store all", "reply": "Heading to the chest to dump my stuff!"}
+
 User: "punch something"
 {"action": "attack", "reply": "Time to throw hands!"}
 
@@ -87,22 +132,18 @@ User: "say hello to everyone"
 {"action": "say hello everyone!", "reply": "Done! Said hi in chat for ya."}
 
 User: "just walk around and explore"
-{"action": "auto", "reply": "Cool, I'll just wander around and see what's out here."}
-
-User: "do a little jump"
-{"action": "jump", "reply": "Boing!"}
-
-User: "look around you"
-{"action": "look", "reply": "Looking around to see what's nearby..."}`;
+{"action": "auto", "reply": "Cool, I'll just wander around and see what's out here."}`
+;}
 
 async function interpretWithOllama(userMessage, stateContext) {
+  const systemPrompt = buildSystemPrompt();
   const response = await fetch(`${ollamaUrl}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: ollamaModel,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT + stateContext },
+        { role: 'system', content: systemPrompt + stateContext },
         { role: 'user', content: userMessage }
       ],
       stream: false,
@@ -119,10 +160,11 @@ async function interpretWithOllama(userMessage, stateContext) {
 }
 
 async function interpretWithAnthropic(userMessage, stateContext) {
+  const systemPrompt = buildSystemPrompt();
   const response = await anthropicClient.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 200,
-    system: SYSTEM_PROMPT + stateContext,
+    system: systemPrompt + stateContext,
     messages: [{ role: 'user', content: userMessage }]
   });
 
