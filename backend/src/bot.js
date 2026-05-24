@@ -11,8 +11,8 @@ let stateInterval = null;
 const DEFAULT_CONFIG = {
   host: 'localhost',
   port: 25565,
-  username: 'AIWorker',
-  version: '1.20.4' // adjust to match your server
+  username: 'AIWorker'
+  // version is omitted so Mineflayer auto-detects the server version
 };
 
 // ---- Public API ----
@@ -28,13 +28,24 @@ function createBot(overrides = {}, io) {
 
   emitLog(io, `Connecting to ${botConfig.host}:${botConfig.port} as "${botConfig.username}"…`);
 
-  bot = mineflayer.createBot({
-    host: botConfig.host,
-    port: botConfig.port,
-    username: botConfig.username,
-    version: botConfig.version,
-    hideErrors: false
-  });
+  try {
+    const botOptions = {
+      host: botConfig.host,
+      port: botConfig.port,
+      username: botConfig.username,
+      hideErrors: false
+    };
+    // Only set version if explicitly provided — otherwise Mineflayer auto-detects
+    if (botConfig.version) {
+      botOptions.version = botConfig.version;
+    }
+
+    bot = mineflayer.createBot(botOptions);
+  } catch (err) {
+    emitLog(io, `Failed to create bot: ${err.message}`);
+    bot = null;
+    return;
+  }
 
   // Load pathfinder plugin
   bot.loadPlugin(pathfinder);
@@ -80,14 +91,25 @@ function createBot(overrides = {}, io) {
 
   bot.on('error', (err) => {
     emitLog(io, `Error: ${err.message}`);
+    // Don't let the error crash the process
   });
 
   bot.on('end', (reason) => {
     emitLog(io, `Disconnected: ${reason}`);
+    bot = null;
     cleanup();
     scheduleReconnect(io);
   });
 }
+
+// Catch any unhandled errors so the backend process doesn't crash
+process.on('uncaughtException', (err) => {
+  console.error('[Bot] Uncaught exception (kept alive):', err.message);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('[Bot] Unhandled rejection (kept alive):', err.message || err);
+});
 
 function destroyBot(io) {
   clearTimeout(reconnectTimer);
