@@ -38,7 +38,7 @@ export default function CommandInput({ onSend, history, disabled }) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={disabled ? 'Not connected…' : 'Type a command (try "help")'}
+        placeholder={disabled ? 'Not connected…' : 'Talk to your bot... ("hey, how are you?")'}
         disabled={disabled}
         autoFocus
       />

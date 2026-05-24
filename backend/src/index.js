@@ -1,9 +1,12 @@
+require('dotenv').config();
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { createBot, getBotState, destroyBot } = require('./bot');
 const { handleCommand } = require('./commands');
+const { initAI } = require('./ai');
 
 const app = express();
 const server = http.createServer(app);
@@ -48,11 +51,14 @@ io.on('connection', (socket) => {
   });
 });
 
-// ---- Start server ----
+// ---- Initialize AI and start server ----
+const aiEnabled = initAI();
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n========================================`);
   console.log(`  MC-Bot Backend running on port ${PORT}`);
+  console.log(`  AI Mode: ${aiEnabled ? 'ON (natural language)' : 'OFF (direct commands)'}`);
   console.log(`  Local:   http://localhost:${PORT}`);
   console.log(`  Network: http://<YOUR_WINDOWS_IP>:${PORT}`);
   console.log(`========================================\n`);

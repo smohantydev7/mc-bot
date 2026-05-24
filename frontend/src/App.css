@@ -283,6 +283,30 @@ button:disabled {
   font-weight: 500;
 }
 
+.log-entry.reply {
+  background: rgba(108, 92, 231, 0.08);
+  border-left: 3px solid var(--accent);
+  padding: 6px 10px;
+  margin: 4px 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.log-entry.reply .log-msg {
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
+.reply-tag {
+  background: var(--accent);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
 .log-time {
   color: var(--text-secondary);
   font-size: 11px;
