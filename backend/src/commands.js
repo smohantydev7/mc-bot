@@ -14,6 +14,7 @@ async function handleCommand(text, io) {
 
   // If AI is enabled, interpret natural language first
   if (isEnabled()) {
+    emitLog(io, 'Thinking...');
     try {
       const result = await interpret(text);
       if (result) {
@@ -21,13 +22,15 @@ async function handleCommand(text, io) {
         emitReply(io, result.reply);
 
         // Execute the action if there is one
-        if (result.action) {
+        if (result.action && result.action !== 'null') {
           executeAction(result.action, io);
         }
         return;
       }
+      // If interpret returned null, Ollama might not be running
+      emitLog(io, 'AI did not respond — is Ollama running? Falling back to direct command.');
     } catch (err) {
-      emitLog(io, `AI error, falling back to direct command: ${err.message}`);
+      emitLog(io, `AI error: ${err.message} — falling back to direct command.`);
     }
   }
 

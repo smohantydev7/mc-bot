@@ -1,6 +1,7 @@
 const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const { startAutonomous, stopAutonomous } = require('./autonomous');
+const { isEnabled, interpret } = require('./ai');
 
 let bot = null;
 let reconnectTimer = null;
@@ -73,6 +74,9 @@ function createBot(overrides = {}, io) {
   bot.on('chat', (username, message) => {
     if (username === bot.username) return;
     emitLog(io, `[Chat] <${username}> ${message}`);
+
+    // Reply to in-game chat using AI
+    handleInGameChat(username, message, io);
   });
 
   bot.on('health', () => {
@@ -183,6 +187,21 @@ function emitLog(io, message) {
   const entry = { timestamp: new Date().toISOString(), message };
   console.log(`[Bot] ${message}`);
   io.emit('bot:log', entry);
+}
+
+// Handle in-game chat — bot replies in Minecraft chat using AI
+async function handleInGameChat(username, message, io) {
+  if (!isEnabled() || !bot) return;
+
+  try {
+    const result = await interpret(`${username} says: ${message}`);
+    if (result && result.reply) {
+      bot.chat(result.reply);
+      emitLog(io, `[Bot replied] ${result.reply}`);
+    }
+  } catch (err) {
+    console.error('[Bot] Failed to reply to chat:', err.message);
+  }
 }
 
 module.exports = { createBot, destroyBot, getBot, getBotState };
